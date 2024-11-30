@@ -68,40 +68,55 @@ public class OpenVPNFlutterPlugin implements FlutterPlugin, ActivityAware {
         });
 
         vpnControlMethod.setMethodCallHandler((call, result) -> {
+            System.out.println("OpenVPN: Received Method Call - " + call.method);
 
             switch (call.method) {
                 case "status":
+                    System.out.println("OpenVPN: Checking VPN Status");
                     if (vpnHelper == null) {
                         result.error("-1", "VPNEngine need to be initialize", "");
+                        System.out.println("OpenVPN: VPNEngine is not initialized");
                         return;
                     }
                     result.success(vpnHelper.status.toString());
+                    System.out.println("OpenVPN: VPN Status - " + vpnHelper.status.toString());
                     break;
                 case "initialize":
+                    System.out.println("OpenVPN: Initializing VPNHelper");
                     vpnHelper = new VPNHelper(activity);
                     vpnHelper.setOnVPNStatusChangeListener(new OnVPNStatusChangeListener() {
                         @Override
                         public void onVPNStatusChanged(String status) {
+                            System.out.println("OpenVPN: VPN Status Changed - " + status);
                             updateStage(status);
                         }
 
                         @Override
                         public void onConnectionStatusChanged(String duration, String lastPacketReceive, String byteIn, String byteOut) {
-
+                            System.out.println("OpenVPN: Connection Stats - Duration=" + duration + 
+                                ", Last Packet Received=" + lastPacketReceive + 
+                                ", Bytes In=" + byteIn + ", Bytes Out=" + byteOut);
                         }
                     });
                     result.success(updateVPNStages());
+                    System.out.println("OpenVPN: VPNHelper Initialized");
                     break;
                 case "disconnect":
-                    if (vpnHelper == null)
-                        result.error("-1", "VPNEngine need to be initialize", "");
-
+                    System.out.println("OpenVPN: Disconnecting VPN");
+                    if (vpnHelper == null) {
+                        result.error("-1", "VPNEngine needs to be initialized", "");
+                        System.out.println("OpenVPN: VPNEngine is not initialized");
+                        return;
+                    }
                     vpnHelper.stopVPN();
                     updateStage("disconnected");
+                    System.out.println("OpenVPN: VPN Disconnected");
                     break;
                 case "connect":
+                    System.out.println("OpenVPN: Starting Connection");
                     if (vpnHelper == null) {
                         result.error("-1", "VPNEngine need to be initialize", "");
+                        System.out.println("OpenVPN: VPNEngine is not initialized");
                         return;
                     }
 
@@ -113,15 +128,18 @@ public class OpenVPNFlutterPlugin implements FlutterPlugin, ActivityAware {
 
                     if (config == null) {
                         result.error("-2", "OpenVPN Config is required", "");
+                        System.out.println("OpenVPN: Missing Config File");
                         return;
                     }
 
                     final Intent permission = VpnService.prepare(activity);
                     if (permission != null) {
                         activity.startActivityForResult(permission, 24);
+                        System.out.println("OpenVPN: Requesting VPN Permission");
                         return;
                     }
                     vpnHelper.startVPN(config, username, password, name, bypassPackages);
+                    System.out.println("OpenVPN: VPN Started with Config - " + config);
                     break;
                 case "stage":
                     if (vpnHelper == null) {
@@ -141,6 +159,7 @@ public class OpenVPNFlutterPlugin implements FlutterPlugin, ActivityAware {
                     break;
 
                 default:
+                    System.out.println("OpenVPN: Unknown Method - " + call.method);
             }
         });
         mContext = binding.getApplicationContext();
@@ -148,6 +167,7 @@ public class OpenVPNFlutterPlugin implements FlutterPlugin, ActivityAware {
 
     public void updateStage(String stage) {
         if (stage == null) stage = "idle";
+        System.out.println("OpenVPN: Stage Updated - " + stage);
         if (vpnStageSink != null) vpnStageSink.success(stage.toLowerCase());
     }
 
